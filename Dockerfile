@@ -10,3 +10,5 @@ COPY . /app
 EXPOSE 32111
 ENV PORT 32111
 WORKDIR /app
+RUN python3 Service.py &
+RUN python3 container_model.py &
