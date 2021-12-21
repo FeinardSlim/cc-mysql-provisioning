@@ -2,7 +2,7 @@ import random
 import shelve
 import time
 import uuid
-import docker
+import docker  #https://docker-py.readthedocs.io/en/stable/
 import docker.errors as x
 import hashlib
 
@@ -11,12 +11,35 @@ class PhpmyadminProvisioning:
         #self.id = str(uuid.uuid1())
         self.dbports = shelve.open('dbports.db',writeback=True)
         self.userdb = shelve.open('users.db',writeback=True)
+
+        #daftar mesin
+
+        self.mesin = dict()
+        self.mesin['mesin1']='tcp://192.168.99.101:2376'
+        self.mesin['mesin2']='tcp://192.168.99.102:2376'
+        self.mesin['mesin3']='tcp://192.168.99.103:2376'
+
+        self.tls_config = docker.tls.TLSConfig(
+            ca_cert='/tmp/ca.pem',
+            client_cert=('/tmp/cert.pem',
+                         '/tmp/key.pem'),
+            verify=True
+        )
+
+        self.mesin_terpilih = 'mesin1'
+
+    def set_mesin(self,pilihan='mesin1'):
+        self.mesin_terpilih=pilihan
+        #dapat menggunakan algoritma load balancing untuk membagi beban antar mesin
+
     def nomor_ports_belum_dialokasikan(self,no_port=11111):
+        nama_mesin = self.mesin_terpilih
         try:
-            return (no_port in self.dbports.keys()) is False
+            return (f"{nama_mesin}-{no_port}" in self.dbports.keys()) is False
         except:
             return True
     def find_port(self):
+        nama_mesin = self.mesin_terpilih
         the_port = 11111
         gagal=5
         while True:
@@ -33,7 +56,8 @@ class PhpmyadminProvisioning:
     def delete(self,username='royyana'):
         self.username=username
         try:
-            docker_client = docker.from_env()
+            docker_client = docker.DockerClient(base_url=self.mesin[self.mesin_terpilih],
+                                                tls=self.tls_config)
 
             container_mysql = docker_client.containers.get(f"{self.username}-mysql")
             container_mysql.stop()
@@ -67,7 +91,8 @@ class PhpmyadminProvisioning:
     def create(self,username='royyana'):
         self.username=username
         try:
-            docker_client = docker.from_env()
+            docker_client = docker.DockerClient(base_url=self.mesin[self.mesin_terpilih],
+                                                tls=self.tls_config)
             the_port_mysql = self.find_port()
             container_mysql = docker_client.containers.run(name=f"{self.username}-mysql", image="mysql:5.7",
                                                      environment=dict(MYSQL_USER=self.username,
@@ -107,12 +132,14 @@ class PhpmyadminProvisioning:
 
 def run():
     c = PhpmyadminProvisioning()
+    pass
+    #c.set_mesin('mesin2')
     #create resource phpmyadmin-mysql
-#    info = c.create(username='royyana')
+    info = c.create(username='royyana')
 
     #get resource info phpmyadmin-mysql
-    info = c.get(username='royyana')
-    c.delete(username='royyana')
+    #info = c.get(username='royyana')
+    #c.delete(username='royyana')
 
 if __name__=='__main__':
     run()
