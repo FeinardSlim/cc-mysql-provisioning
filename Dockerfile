@@ -10,5 +10,5 @@ COPY . /app
 EXPOSE 32111
 ENV PORT 32111
 WORKDIR /app
-# Use gunicorn as the entrypoint
-CMD exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 0 deploy:app
+RUN python3 Service.py
+RUN python3 container_model.py
